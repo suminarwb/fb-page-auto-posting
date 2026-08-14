@@ -1,0 +1,16 @@
+{
+  "schedule": {
+    "cronExpressions": ["0 19 * * 1-5", "0 13 * * 0,6"]
+  },
+  "dedupeWindowDays": 14,
+  "llm": {
+    "generatorProvider": "gemini",
+    "generatorModel": "gemini-3.6-flash",
+    "verifierProvider": "gemini",
+    "verifierModel": "gemini-3.5-flash-lite",
+    "maxTokens": 1500
+  },
+  "facebook": {
+    "graphApiVersion": "v26.0"
+  }
+}
