@@ -9,6 +9,8 @@ Agent Node.js yang otomatis membuat dan mempublikasikan konten storytelling gami
 - Self-verification otomatis sebelum publish — caption yang tidak sesuai brand voice/guideline **tidak pernah** tayang, disimpan untuk direview manual.
 - Publish otomatis ke Facebook Page: teks, gambar, atau video, dipilih otomatis dari isi folder `assets/branding/` — tidak perlu ubah config.
 - Kalau ada file gambar/video menunggu, topik postingan diambil dari nama file itu sendiri (bukan dari pool acak), dan file-nya otomatis terhapus setelah berhasil dipost.
+- Kalau folder `assets/branding/` kosong, agent generate sendiri gambar fallback (via Cloudflare Workers AI, gratis) supaya post tetap punya elemen visual — gagal generate tidak pernah menggagalkan publish, cukup fallback ke teks.
+- Setiap caption otomatis menyertakan hashtag relevan (topik + `#StikSatu`) untuk memperluas jangkauan — dicek juga oleh verifier.
 - Retry + backoff untuk error transient, tanpa retry tak berujung untuk error permanen (token invalid, dll).
 - Jadwal otomatis (cron) dengan timezone Indonesia (WIB), berjalan sebagai proses long-running (siap dipakai dengan `pm2`).
 - Log terstruktur (JSON) dan audit trail lengkap di SQLite lokal.
@@ -49,6 +51,7 @@ Satu kali jalan = satu keputusan (publish, ditahan untuk review, atau skip). Tid
 - **Node.js 18+** (dikembangkan & dites dengan Node 22).
 - Akun & API key untuk **minimal satu** provider AI: [Anthropic](https://platform.claude.com/), [OpenAI](https://platform.openai.com/), atau [Google Gemini](https://aistudio.google.com/apikey).
 - Facebook Page yang ingin dikelola, plus satu **Facebook App** di [developers.facebook.com](https://developers.facebook.com/apps) (gratis, dipakai untuk generate Page Access Token — lihat panduan di bawah).
+- **Opsional:** akun [Cloudflare](https://dash.cloudflare.com) (gratis) kalau mau pakai fitur auto-generate gambar fallback — lihat bagian "Setup Cloudflare Workers AI".
 
 ## Instalasi
 
@@ -71,6 +74,8 @@ cp .env.example .env
 | `FB_PAGE_ACCESS_TOKEN` | **Wajib** | Page Access Token (lihat panduan di bawah) |
 | `FB_PAGE_ID` | **Wajib** | ID Facebook Page yang mau di-post |
 | `FB_APP_ID` | Wajib kalau mau posting **video** | App ID Facebook App (dipakai untuk resumable upload) |
+| `CLOUDFLARE_ACCOUNT_ID` | Wajib kalau `imageGeneration.enabled` | Account ID Cloudflare (lihat "Setup Cloudflare Workers AI") |
+| `CLOUDFLARE_API_TOKEN` | Wajib kalau `imageGeneration.enabled` | API Token dengan permission Workers AI |
 
 Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvider`/`llm.verifierProvider` di `config.json`) — tidak perlu isi ketiganya.
 
@@ -89,7 +94,12 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
     "verifierModel": "gemini-3.5-flash-lite",
     "maxTokens": 1500
   },
-  "facebook": { "graphApiVersion": "v26.0" }
+  "facebook": { "graphApiVersion": "v26.0" },
+  "imageGeneration": {
+    "enabled": true,
+    "provider": "cloudflare",
+    "model": "@cf/black-forest-labs/flux-1-schnell"
+  }
 }
 ```
 
@@ -99,6 +109,8 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
 - **`llm.generatorModel`/`verifierModel`** — **cek dulu daftar model terbaru dari provider terkait sebelum diisi** (model sering deprecated/berganti nama — lihat bagian Troubleshooting).
 - **`llm.maxTokens`** — token budget untuk generator. Kalau pakai model dengan "thinking"/reasoning internal (mis. Gemini 3.x), sisakan budget besar (1000+) karena sebagian besar token bisa terpakai untuk proses berpikir sebelum menghasilkan teks caption.
 - **`facebook.graphApiVersion`** — cek versi terbaru di [Graph API changelog](https://developers.facebook.com/docs/graph-api/changelog) Meta.
+- **`imageGeneration.enabled`** — set `false` untuk mematikan total fitur auto-generate gambar (fallback jadi selalu teks-only kalau `assets/branding/` kosong).
+- **`imageGeneration.provider`/`model`** — saat ini cuma didukung `"cloudflare"` dengan model image-gen apa pun yang tersedia di [katalog Workers AI](https://developers.cloudflare.com/workers-ai/models/) (default `flux-1-schnell`, cepat & gratis untuk skala kecil).
 
 ## Setup Kredensial Facebook
 
@@ -147,6 +159,17 @@ Ada 3 credential di App Settings yang bentuknya mirip (string ~32 karakter) tapi
 
 Kalau salah taruh salah satu di atas, Facebook akan menolak dengan error `"Invalid OAuth access token - Cannot parse access token"` (code 190).
 
+## Setup Cloudflare Workers AI (opsional — untuk auto-generate gambar)
+
+Cuma perlu ini kalau `imageGeneration.enabled: true` di `config.json` (default: aktif).
+
+1. Daftar akun gratis di [dash.cloudflare.com](https://dash.cloudflare.com).
+2. Catat **Account ID** — terlihat di sidebar kanan halaman overview domain manapun, atau di URL dashboard.
+3. Buka [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → cari template terkait Workers AI (kalau tidak ada template siap pakai, buat token custom dengan permission **"Workers AI Read"** dan **"Workers AI Write"**, scope "Entire account" atau dibatasi ke akun tertentu).
+4. Isi `CLOUDFLARE_ACCOUNT_ID` dan `CLOUDFLARE_API_TOKEN` di `.env`.
+
+Kuota gratis: **10.000 neuron/hari** (bukan trial, gratis terus-menerus) — cukup untuk ratusan gambar per hari, jauh lebih dari kebutuhan 1 post/hari. Kalau lewat kuota, generate akan gagal jelas (bukan tagihan mengejutkan) dan pipeline otomatis fallback ke teks-only.
+
 ## Menjalankan
 
 ### Trigger manual (sekali jalan)
@@ -183,20 +206,26 @@ Sebelum benar-benar melepas ke mode full-auto tanpa pengawasan, pantau manual be
 Tidak ada config yang perlu diubah — cukup taruh file di `assets/branding/`:
 
 - **Ada file gambar** (`.jpg/.jpeg/.png/.gif/.bmp/.tiff`) → publish otomatis lewat `/photos`. Batas ukuran 4MB (limit Facebook).
-- **Tidak ada gambar tapi ada video** (`.mp4/.mov`) → publish otomatis lewat resumable upload video (butuh `FB_APP_ID` di `.env`).
-- **Folder kosong** → publish teks saja seperti biasa.
+- **Tidak ada gambar tapi ada video** (`.mp4/.mov`) → publish otomatis lewat resumable upload video (butuh `FB_APP_ID` di `.env`), dikirim per-chunk 4MB.
+- **Folder kosong** → agent generate sendiri 1 gambar (via Cloudflare Workers AI, kalau `imageGeneration.enabled`) berdasarkan topik yang lagi diproses, lalu publish gambar itu. Kalau generate gagal (atau fitur dimatikan), fallback ke publish teks saja — tidak pernah menggagalkan run.
 - **Ada gambar dan video sekaligus** → gambar diproses duluan, video menunggu run berikutnya.
 - **Ada beberapa file** → dipilih satu secara alfabetis per jenis (beri prefix angka kalau mau atur urutan, mis. `01-cover.jpg`).
 
-**Nama file menentukan topik captionnya** — kalau ada file menunggu, caption dibuat berdasarkan nama file itu (bukan topik acak dari pool), jadi kasih nama yang deskriptif, misalnya `kemenangan-pertama-elden-ring.jpg`, bukan `IMG_2024.jpg`.
+**Nama file menentukan topik captionnya** — kalau ada file menunggu (upload manual, bukan hasil generate), caption dibuat berdasarkan nama file itu (bukan topik acak dari pool), jadi kasih nama yang deskriptif, misalnya `kemenangan-pertama-elden-ring.jpg`, bukan `IMG_2024.jpg`.
 
-File yang dipakai **otomatis terhapus** setelah berhasil dipost (kalau gagal, file tetap ada untuk dicoba lagi di run berikutnya).
+File yang dipakai (baik upload manual maupun hasil generate) **otomatis terhapus** setelah berhasil dipost (kalau gagal, file tetap ada untuk dicoba lagi di run berikutnya).
+
+Panduan visual untuk gambar hasil generate ada di `prompts/image-style-guide.md` — sengaja diarahkan ke gaya generik/abstrak (mood gaming, bukan adegan/karakter spesifik dari game tertentu) untuk menghindari risiko hak cipta.
 
 ## Kustomisasi
 
 ### Brand voice
 
-Edit `prompts/style-guide.md` — panduan gaya bahasa, fokus konten, dan batasan yang dipakai baik oleh generator maupun verifier. Ini file yang paling menentukan karakter caption yang dihasilkan.
+Edit `prompts/style-guide.md` — panduan gaya bahasa, fokus konten, batasan, dan aturan hashtag (wajib 2-4 per caption) yang dipakai baik oleh generator maupun verifier. Ini file yang paling menentukan karakter caption yang dihasilkan.
+
+### Gaya visual gambar auto-generate
+
+Edit `prompts/image-style-guide.md` — panduan untuk gambar fallback (lihat bagian "Posting dengan Gambar atau Video"). Ubah di sini kalau mau gaya visual berbeda dari default (generik/abstrak, neon biru-ungu ala PlayStation).
 
 ### Pool topik
 
@@ -216,17 +245,19 @@ src/
   topic-source.js         pool topik + dedupe, atau derive dari nama file media
   content-generator.js    generate caption via llm-client
   verifier.js             self-verify caption (structured JSON output)
-  llm-client.js           satu-satunya modul yang bicara ke SDK provider AI
+  image-generator.js      generate gambar fallback via llm-client (Cloudflare)
+  llm-client.js           satu-satunya modul yang bicara ke SDK/API provider AI
   fb-publisher.js         satu-satunya modul yang bicara ke Facebook Graph API
-  media-asset.js          scan/hapus file di assets/branding/
+  media-asset.js          scan/tulis/hapus file di assets/branding/
   store.js                SQLite: riwayat & audit trail
   logger.js               logger terstruktur (pino)
   config.js               loader config.json + .env
   errors.js               error class + klasifikasi retryable
 prompts/
-  style-guide.md          brand voice
+  style-guide.md          brand voice (termasuk aturan hashtag)
   generator-system.md     system prompt generator
   verifier-system.md      system prompt verifier
+  image-style-guide.md    panduan visual gambar auto-generate
 assets/branding/          taruh gambar/video di sini untuk posting otomatis
 data/                     database SQLite (gitignored)
 config.json               pengaturan non-rahasia
@@ -254,3 +285,12 @@ Model dengan "adaptive thinking" (Gemini 3.x) bisa menghabiskan sebagian besar t
 
 **Topik yang sama terus muncul / topik baru tidak pernah dipakai**
 Cek `dedupeWindowDays` di `config.json` dan isi `TOPIC_POOL` di `src/topic-source.js` — pool yang terlalu kecil relatif ke window dedupe akan sering kehabisan kandidat (pipeline akan `skip`, bukan error).
+
+**Upload video gagal: `"There was a problem uploading your video file"` (code 6000)**
+Error ini sudah diklasifikasikan retryable (pipeline otomatis coba lagi), tapi kalau tetap gagal terus untuk video tertentu meski format/ukurannya wajar (H.264/AAC, MP4 standar), kemungkinan videonya terdeteksi sistem hak cipta Facebook (umum terjadi untuk rekaman gameplay dari game komersial) — pesan errornya sengaja generik/tidak menyebut hak cipta secara eksplisit. Coba video lain yang jelas bukan gameplay untuk konfirmasi.
+
+**Generate gambar gagal / `imageGeneration` selalu fallback ke teks**
+Cek kuota Cloudflare Workers AI (`Ready for testing`/rate limit di dashboard Cloudflare) dan pastikan `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` di `.env` benar. Ini tidak pernah menggagalkan publish — cuma fallback diam-diam ke teks, jadi cek log (`stage: "image-generator"`) untuk pesan error aslinya.
+
+**Caption tidak ada hashtag**
+Verifier seharusnya menolak caption tanpa hashtag (lihat kriteria di `prompts/verifier-system.md`) — kalau lolos tanpa hashtag, cek apakah `prompts/style-guide.md`/`generator-system.md` sempat diedit dan instruksi hashtag-nya hilang.
