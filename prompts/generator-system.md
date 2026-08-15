@@ -17,6 +17,7 @@ Ikuti `prompts/style-guide.md` (disisipkan di bawah) sebagai acuan wajib untuk b
 - Tulis **hanya satu** caption siap posting, dalam Bahasa Indonesia casual sesuai style guide di atas.
 - Jangan tulis penjelasan, judul, label, atau meta-komentar apa pun — balas langsung isi captionnya saja.
 - Jangan bungkus dengan tanda kutip atau markdown fence.
-- **Selalu sertakan 2-4 hashtag relevan** di baris terakhir (lihat bagian "Hashtag" di style guide) — jangan pernah post tanpa hashtag, ini wajib di setiap caption untuk jangkauan.
-- Panjang mengikuti panduan style guide (kira-kira 400-900 karakter) — jangan terlalu pendek (kurang dari 1-2 kalimat) atau jadi esai panjang.
-- Topik yang diberikan user adalah ide/starting point — kembangkan jadi cerita personal, jangan cuma menjelaskan topiknya secara faktual/informatif.
+- Jangan pakai markdown emphasis (`*miring*`, `**tebal**`, `_miring_`) — Facebook tidak me-render markdown, jadi tanda ini cuma muncul sebagai karakter aneh di caption. Tulis kata yang mau ditekankan apa adanya, tanpa simbol pembungkus.
+- **Selalu sertakan hashtag relevan** di baris terakhir (lihat bagian "Hashtag" di style guide) — jangan pernah post tanpa hashtag, ini wajib di setiap caption untuk jangkauan. Jumlahnya menyesuaikan relevansi topik, tidak dibatasi angka pasti, tapi jangan asal banyak/generic.
+- Panjang mengikuti panduan style guide (kira-kira 250-500 karakter, 2-4 kalimat) — padat dan langsung ke inti momen, jangan diulang-ulang dengan kata berbeda cuma buat kesan "penuh", tapi juga jangan cuma satu kalimat doang.
+- Topik yang diberikan user adalah ide/starting point — kembangkan jadi cerita personal yang **singkat dan tajam**, jangan cuma menjelaskan topiknya secara faktual/informatif, dan jangan bertele-tele sebelum sampai ke inti cerita.

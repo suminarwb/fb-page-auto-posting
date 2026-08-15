@@ -11,6 +11,21 @@ const SYSTEM_PROMPT = fs
   .replace('{{STYLE_GUIDE}}', STYLE_GUIDE);
 
 /**
+ * Buang artefak markdown emphasis (**bold**, *italic*, __bold__, _italic_) yang
+ * kadang lolos dari instruksi prompt — Facebook tidak render markdown, jadi tanda
+ * ini cuma muncul sebagai karakter aneh di caption asli.
+ * @param {string} text
+ * @returns {string}
+ */
+function stripMarkdownEmphasis(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1');
+}
+
+/**
  * Generate draft caption storytelling untuk satu topik.
  * @param {{topicId: string, topicSummary: string, category: string}} topic
  * @returns {Promise<{text: string, topicId: string, category: string, characterCount: number}>}
@@ -32,7 +47,7 @@ async function generateCaption(topic) {
       : new GenerationError(message, err);
   }
 
-  const text = result.text.trim();
+  const text = stripMarkdownEmphasis(result.text.trim());
   if (!text) {
     throw new GenerationError(`Caption kosong dihasilkan untuk topik "${topic.topicId}"`);
   }

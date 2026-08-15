@@ -18,15 +18,16 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 ## Format Konten
 
 - **Storytelling personal**, bukan review teknis atau berita rilis. Sudut pandang: "gue inget waktu...", "ada momen di game X yang bikin gue...", bukan "Game X adalah judul yang dirilis pada..."
-- Panjang caption: idealnya 3-8 kalimat pendek (kira-kira 400-900 karakter). Cukup untuk satu momen/cerita, tidak perlu esai panjang.
-- Satu post = satu momen/ide, bukan rangkuman banyak topik sekaligus.
+- **Pendek dan padat** — idealnya 2-4 kalimat (kira-kira 250-500 karakter). Langsung ke inti momen, tanpa basa-basi pembuka yang muter-muter dulu sebelum sampai ke ceritanya.
+- **Jangan mengulang ide yang sama dua kali dengan kata berbeda** cuma buat kesan "penuh" — kalau satu kalimat sudah menyampaikan poinnya, lanjut ke bagian berikutnya, jangan direstate.
+- Satu post = satu momen/ide, bukan rangkuman banyak topik sekaligus. **Pengecualian:** kalau topiknya memang inherently soal katalog/lineup/bundel (misal update PS Plus bulan ini, sale multi-game) — menyebut beberapa judul game itu wajar, SELAMA semuanya dibingkai sebagai satu reaksi/momen yang sama (excitement liat lineup barunya), bukan diceritain sebagai beberapa cerita terpisah yang tidak nyambung.
 - Penutup yang mengundang interaksi itu bagus (pertanyaan santai ke pembaca), tapi tidak wajib di setiap post — jangan jadi formula kaku yang keliatan robotic.
 
 ## Hashtag
 
 - **Wajib** ada di setiap caption, ditaruh di baris terakhir (terpisah dari isi cerita), supaya jangkauan postingan lebih luas.
-- **2-4 hashtag per post** — relevan ke topik spesifik yang dibahas (nama game/franchise, platform seperti #PlayStation/#Xbox/#Nintendo), plus tag komunitas **#StikSatu**.
-- Jangan asal banyak/generic (`#gaming #game #viral #fyp` bertumpuk) — pilih yang benar-benar nyambung ke cerita, bukan spam supaya kelihatan "SEO".
+- **Jumlah tidak dibatasi angka pasti** — sesuaikan dengan relevansi topik: topik satu game biasanya cukup 2-3, topik katalog/lineup multi-game boleh lebih banyak kalau memang semuanya relevan (nama tiap game yang disebut, platform, plus tag komunitas **#StikSatu**).
+- Jangan asal banyak/generic (`#gaming #game #viral #fyp` bertumpuk) — setiap hashtag harus benar-benar nyambung ke isi cerita, bukan ditambahin cuma buat kelihatan "SEO".
 - Hashtag tidak dihitung sebagai bagian dari storytelling-nya — ini elemen distribusi, bukan isi cerita, jadi tidak perlu terasa "menyatu" secara naratif dengan paragraf di atasnya.
 
 ## Fokus Konten
@@ -37,7 +38,7 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 
 ## Yang Harus Dihindari
 
-- Klaim yang menyesatkan atau tidak bisa diverifikasi (rumor rilis, bocoran belum resmi yang diklaim pasti benar, angka statistik yang dikarang).
+- Klaim yang menyesatkan atau tidak bisa diverifikasi (rumor rilis, bocoran belum resmi yang diklaim pasti benar, angka statistik yang dikarang) — bukan ekspresi waktu kasual macam "kemarin"/"baru-baru ini" yang dipakai longgar, itu gaya ngobrol biasa, bukan klaim faktual yang perlu presisi.
 - Konten sensitif: SARA, politik praktis, kekerasan eksplisit, konten dewasa.
 - Merendahkan platform/komunitas lain (perang console war yang toxic) — bercanda ringan soal rivalitas platform boleh, tapi tidak merendahkan.
 - Promosi produk/judi/investasi yang tidak relevan dengan gaming.
