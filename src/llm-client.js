@@ -112,4 +112,50 @@ async function complete({ provider, model, system, prompt, maxTokens, jsonMode }
   throw new Error(`Unknown LLM provider: ${provider}`);
 }
 
-module.exports = { complete };
+/**
+ * Interface generik untuk image generation — dipakai src/image-generator.js.
+ * Terpisah dari complete() karena bentuk input/output beda (prompt teks -> gambar
+ * biner, bukan teks -> teks), tapi tetap satu-satunya modul yang boleh panggil
+ * SDK/endpoint provider AI, sesuai aturan keras project ini.
+ * @param {object} input
+ * @param {string} input.provider
+ * @param {string} input.model
+ * @param {string} input.prompt
+ * @returns {Promise<{ imageBuffer: Buffer, mimeType: string }>}
+ */
+async function generateImage({ provider, model, prompt }) {
+  if (provider === 'cloudflare') {
+    const accountId = config.getSecret('CLOUDFLARE_ACCOUNT_ID');
+    const apiToken = config.getSecret('CLOUDFLARE_API_TOKEN');
+
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      }
+    );
+
+    const body = await response.json().catch(() => null);
+    if (!response.ok || body?.success === false) {
+      const errMsg = body?.errors?.map((e) => e.message).join('; ') || `HTTP ${response.status}`;
+      const err = new Error(`Cloudflare Workers AI error: ${errMsg}`);
+      err.status = response.status; // dipakai isTransientCause() di errors.js untuk klasifikasi retry
+      throw err;
+    }
+
+    const base64Image = body?.result?.image;
+    if (!base64Image) {
+      throw new Error('Cloudflare Workers AI tidak mengembalikan field result.image');
+    }
+    return { imageBuffer: Buffer.from(base64Image, 'base64'), mimeType: 'image/png' };
+  }
+
+  throw new Error(`Unknown image provider: ${provider}`);
+}
+
+module.exports = { complete, generateImage };

@@ -18,6 +18,7 @@ Nilai draft caption terhadap semua kriteria berikut:
 4. **Tidak ada konten sensitif** — SARA, politik praktis, kekerasan eksplisit, konten dewasa, merendahkan platform/komunitas lain secara toxic, promosi tidak relevan (judi, investasi, dll).
 5. **Panjang wajar** — kira-kira 400-900 karakter, bukan satu baris pendek dan bukan esai panjang berlebihan.
 6. **Satu ide/momen jelas** — bukan campuran banyak topik tidak nyambung dalam satu caption.
+7. **Ada hashtag relevan** — wajib ada 2-4 hashtag di baris terakhir, relevan ke topik (nama game/platform) plus tag komunitas #StikSatu. Gagal kalau: tidak ada hashtag sama sekali, atau hashtag-nya generic/spam dan tidak relevan ke isi caption.
 
 ## Instruksi output
 

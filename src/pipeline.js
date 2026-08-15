@@ -6,6 +6,8 @@ const publisher = require('./fb-publisher');
 const store = require('./store');
 const logger = require('./logger');
 const mediaAsset = require('./media-asset');
+const imageGenerator = require('./image-generator');
+const config = require('./config');
 
 // Backoff sederhana untuk error transient — maksimum 2x retry (02-TECH-DESIGN.md §6).
 const RETRY_BACKOFF_MS = [5000, 15000];
@@ -72,6 +74,22 @@ async function runPipeline() {
       const previewAsset = mediaAsset.peek();
       await store.saveForReview(topic, draft, verdict.reasons, previewAsset.mode, previewAsset.fileName ?? null);
       return { status: 'held-for-review', reasons: verdict.reasons, topic, draft };
+    }
+
+    if (config.imageGeneration?.enabled && mediaAsset.peek().mode === 'none') {
+      // Fallback: tidak ada file di assets/branding/, coba generate gambar sendiri
+      // supaya post tetap ada elemen visual. Kegagalan di sini TIDAK BOLEH menggagalkan
+      // seluruh run — cukup lanjut publish teks-only (reliability lebih penting daripada
+      // "harus ada gambar").
+      try {
+        const generated = await withRetry('image-generator', () => imageGenerator.generateImageForTopic(topic));
+        mediaAsset.write(generated.fileName, generated.imageBuffer);
+      } catch (err) {
+        logger.warn(
+          { stage: 'image-generator', status: 'skipped', err: err.message },
+          'Gagal generate gambar fallback, lanjut publish teks-only'
+        );
+      }
     }
 
     const result = await withRetry('publisher', () => publisher.publish(draft));

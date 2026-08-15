@@ -10,6 +10,10 @@ const { PublishError, TransientPublishError } = require('./errors');
 // Kode error Graph API — lihat 04-API-INTEGRATION.md §2.3
 const RETRYABLE_FB_ERROR_CODES = new Set([4, 17]); // rate limit
 const NON_RETRYABLE_FB_ERROR_CODES = new Set([190, 100]); // token invalid, parameter invalid
+// code 6000 (video upload generic) dengan subcode ini eksplisit disarankan Facebook
+// sendiri untuk di-retry ("Please wait a few minutes and try again") — dikonfirmasi
+// nyata: request yang identik gagal lalu berhasil tanpa perubahan apa pun di kode kita.
+const RETRYABLE_VIDEO_SUBCODES = new Set([1363019, 1363021]);
 
 const MIME_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.bmp': 'image/bmp', '.tiff': 'image/tiff', '.mp4': 'video/mp4', '.mov': 'video/quicktime' };
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // batas 4MB — Graph API reference untuk /photos
@@ -33,11 +37,12 @@ function classifyAndThrow(status, body) {
   const fbError = body && body.error;
   const message = fbError?.message || `Facebook Graph API error (HTTP ${status})`;
   const code = fbError?.code;
+  const subcode = fbError?.error_subcode;
 
   if (NON_RETRYABLE_FB_ERROR_CODES.has(code)) {
     throw new PublishError(message, fbError);
   }
-  if (RETRYABLE_FB_ERROR_CODES.has(code) || status >= 500) {
+  if (RETRYABLE_FB_ERROR_CODES.has(code) || status >= 500 || (code === 6000 && RETRYABLE_VIDEO_SUBCODES.has(subcode))) {
     throw new TransientPublishError(message, fbError);
   }
   // Kode tidak dikenal: default non-retryable (fail-safe, jangan asumsikan aman diulang).
@@ -96,6 +101,40 @@ async function publishImage(draft, ctx, asset) {
   return { fbPostId: body.post_id || body.id, mediaMode: 'image', mediaFile: asset.fileName };
 }
 
+async function uploadVideoChunks(ctx, uploadSessionId, absolutePath, fileLength) {
+  // Kirim file per-chunk (bukan sekaligus dalam satu request) — video nyata ~17MB
+  // pernah gagal dengan error Facebook "problem uploading your video file" (code
+  // 6000/subcode 1363019) saat dikirim dalam satu request penuh. Dokumentasi resmi
+  // menyebut mekanisme resume pakai file_offset per bagian, jadi kemungkinan besar
+  // memang didesain untuk chunking, bukan satu request raksasa.
+  const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB — belum ada angka resmi dari dokumentasi Meta
+  const fd = fs.openSync(absolutePath, 'r');
+  try {
+    let offset = 0;
+    while (offset < fileLength) {
+      const chunkLength = Math.min(CHUNK_SIZE, fileLength - offset);
+      const chunkBuffer = Buffer.alloc(chunkLength);
+      fs.readSync(fd, chunkBuffer, 0, chunkLength, offset);
+
+      const result = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${uploadSessionId}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `OAuth ${ctx.accessToken}`,
+          file_offset: String(offset),
+        },
+        body: chunkBuffer,
+      });
+
+      if (result?.h) return result.h; // file handle — chunk terakhir sudah melengkapi file
+      // Kalau API balas offset baru, pakai itu; kalau tidak, hitung manual dari ukuran chunk.
+      offset = typeof result?.offset === 'number' ? result.offset : offset + chunkLength;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return null;
+}
+
 async function publishVideo(draft, ctx, asset) {
   const fileLength = fs.statSync(asset.absolutePath).size;
   const mimeType = guessMimeType(asset.fileName);
@@ -116,18 +155,9 @@ async function publishVideo(draft, ctx, asset) {
   const uploadSessionId = session?.id; // bentuk: "upload:<id>"
   if (!uploadSessionId) throw new PublishError('Gagal membuat upload session video (tidak ada session id)');
 
-  // 2. Upload isi file, dapat file handle.
-  const fileBuffer = fs.readFileSync(asset.absolutePath);
-  const uploadResult = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${uploadSessionId}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `OAuth ${ctx.accessToken}`,
-      file_offset: '0',
-    },
-    body: fileBuffer,
-  });
-  const fileHandle = uploadResult?.h;
-  if (!fileHandle) throw new PublishError('Gagal upload file video (tidak ada file handle)');
+  // 2. Upload isi file per-chunk, dapat file handle.
+  const fileHandle = await uploadVideoChunks(ctx, uploadSessionId, asset.absolutePath, fileLength);
+  if (!fileHandle) throw new PublishError('Gagal upload file video (tidak ada file handle setelah semua chunk terkirim)');
 
   // 3. Publish video ke Page pakai file handle.
   const publishResult = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${ctx.pageId}/videos`, {

@@ -35,6 +35,18 @@ class TransientGenerationError extends TransientError {
   }
 }
 
+class ImageGenerationError extends PipelineError {
+  constructor(message, cause) {
+    super(message, 'image-generator', cause);
+  }
+}
+
+class TransientImageGenerationError extends TransientError {
+  constructor(message, cause) {
+    super(message, 'image-generator', cause);
+  }
+}
+
 class VerificationFailed extends PipelineError {
   constructor(message, cause) {
     super(message, 'verifier', cause);
@@ -82,6 +94,8 @@ module.exports = {
   TopicSourceError,
   GenerationError,
   TransientGenerationError,
+  ImageGenerationError,
+  TransientImageGenerationError,
   VerificationFailed,
   TransientVerificationError,
   PublishError,

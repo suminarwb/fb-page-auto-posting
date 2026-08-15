@@ -22,6 +22,13 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 - Satu post = satu momen/ide, bukan rangkuman banyak topik sekaligus.
 - Penutup yang mengundang interaksi itu bagus (pertanyaan santai ke pembaca), tapi tidak wajib di setiap post — jangan jadi formula kaku yang keliatan robotic.
 
+## Hashtag
+
+- **Wajib** ada di setiap caption, ditaruh di baris terakhir (terpisah dari isi cerita), supaya jangkauan postingan lebih luas.
+- **2-4 hashtag per post** — relevan ke topik spesifik yang dibahas (nama game/franchise, platform seperti #PlayStation/#Xbox/#Nintendo), plus tag komunitas **#StikSatu**.
+- Jangan asal banyak/generic (`#gaming #game #viral #fyp` bertumpuk) — pilih yang benar-benar nyambung ke cerita, bukan spam supaya kelihatan "SEO".
+- Hashtag tidak dihitung sebagai bagian dari storytelling-nya — ini elemen distribusi, bukan isi cerita, jadi tidak perlu terasa "menyatu" secara naratif dengan paragraf di atasnya.
+
 ## Fokus Konten
 
 - **Utama:** console gaming — PS/Xbox/Nintendo, first-party maupun third-party title, kenangan generasi konsol lama juga oke.

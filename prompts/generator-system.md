@@ -17,6 +17,6 @@ Ikuti `prompts/style-guide.md` (disisipkan di bawah) sebagai acuan wajib untuk b
 - Tulis **hanya satu** caption siap posting, dalam Bahasa Indonesia casual sesuai style guide di atas.
 - Jangan tulis penjelasan, judul, label, atau meta-komentar apa pun — balas langsung isi captionnya saja.
 - Jangan bungkus dengan tanda kutip atau markdown fence.
-- Jangan sertakan hashtag kecuali terasa natural dan sedikit (maksimal 2-3), taruh di baris terakhir kalau dipakai.
+- **Selalu sertakan 2-4 hashtag relevan** di baris terakhir (lihat bagian "Hashtag" di style guide) — jangan pernah post tanpa hashtag, ini wajib di setiap caption untuk jangkauan.
 - Panjang mengikuti panduan style guide (kira-kira 400-900 karakter) — jangan terlalu pendek (kurang dari 1-2 kalimat) atau jadi esai panjang.
 - Topik yang diberikan user adalah ide/starting point — kembangkan jadi cerita personal, jangan cuma menjelaskan topiknya secara faktual/informatif.

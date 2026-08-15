@@ -50,4 +50,19 @@ function remove(absolutePath) {
   fs.unlinkSync(absolutePath);
 }
 
-module.exports = { peek, remove };
+/**
+ * Tulis file baru ke assets/branding/ — dipakai pipeline.js untuk taruh gambar hasil
+ * generate AI (fallback saat folder kosong), supaya fb-publisher.js otomatis menemukan
+ * dan memakainya lewat peek() seperti file yang di-upload manual.
+ * @param {string} fileName
+ * @param {Buffer} buffer
+ * @returns {string} absolutePath file yang baru ditulis
+ */
+function write(fileName, buffer) {
+  fs.mkdirSync(BRANDING_DIR, { recursive: true });
+  const absolutePath = path.join(BRANDING_DIR, fileName);
+  fs.writeFileSync(absolutePath, buffer);
+  return absolutePath;
+}
+
+module.exports = { peek, remove, write };
