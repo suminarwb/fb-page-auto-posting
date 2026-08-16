@@ -52,14 +52,17 @@ async function withRetry(stage, fn) {
 /**
  * Jalankan satu siklus penuh: pilih topik -> generate -> verify -> publish -> log.
  * Satu-satunya tempat yang tahu urutan penuh pipeline (lihat 03-CODE-PATTERNS.md §4).
+ * @param {object} [options]
+ * @param {string} [options.forcedTopicId] paksa pakai topik tertentu dari TOPIC_POOL
+ *   (dipakai trigger manual `--<topicId>`, lihat index.js) — lewati media/dedupe.
  * @returns {Promise<object>}
  */
-async function runPipeline() {
+async function runPipeline({ forcedTopicId } = {}) {
   let topic = null;
   let draft = null;
 
   try {
-    topic = await withRetry('topic-source', () => topicSource.pickTopic());
+    topic = await withRetry('topic-source', () => topicSource.pickTopic(forcedTopicId));
     if (!topic) {
       // Tidak ada topik baru yang tersedia — log dan keluar, bukan error.
       return { status: 'skipped', reason: 'no-topic-available' };
@@ -76,11 +79,15 @@ async function runPipeline() {
       return { status: 'held-for-review', reasons: verdict.reasons, topic, draft };
     }
 
-    if (config.imageGeneration?.enabled && mediaAsset.peek().mode === 'none') {
+    const isNewsTopic = topic.topicId.startsWith('news:');
+    if (!isNewsTopic && config.imageGeneration?.enabled && mediaAsset.peek().mode === 'none') {
       // Fallback: tidak ada file di assets/branding/, coba generate gambar sendiri
       // supaya post tetap ada elemen visual. Kegagalan di sini TIDAK BOLEH menggagalkan
       // seluruh run — cukup lanjut publish teks-only (reliability lebih penting daripada
       // "harus ada gambar").
+      // Topik berita dilewati sengaja: caption sudah menyertakan URL sumber, dan Facebook
+      // otomatis unfurl link itu jadi preview kartu (gambar asli dari media sumber) —
+      // menambah gambar AI generik di sini cuma bikin post berita jadi berantakan/redundan.
       try {
         const generated = await withRetry('image-generator', () => imageGenerator.generateImageForTopic(topic));
         mediaAsset.write(generated.fileName, generated.imageBuffer);

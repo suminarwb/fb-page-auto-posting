@@ -4,6 +4,7 @@
 const store = require('./store');
 const config = require('./config');
 const mediaAsset = require('./media-asset');
+const newsSource = require('./news-source');
 const { TopicSourceError } = require('./errors');
 
 const TOPIC_POOL = [
@@ -30,6 +31,15 @@ const TOPIC_POOL = [
   { topicId: 'weekend-gaming-marathon', category: 'console', topicSummary: 'Cerita maraton main game console seharian penuh di akhir pekan, worth it atau menyesal paginya.' },
   { topicId: 'pc-vs-console-friendly-debate', category: 'pc', topicSummary: 'Obrolan santai (bukan war) soal pengalaman pindah dari console ke PC gaming atau sebaliknya.' },
   { topicId: 'pc-mod-community-love', category: 'pc', topicSummary: 'Cerita ketemu mod komunitas PC yang bikin pengalaman main game jadi beda/lebih seru.' },
+  { topicId: 'best-character-in-game', category: 'console', topicSummary: 'Cerita soal karakter game favorit yang paling nempel di hati — kenapa karakter itu spesial dan momen apa yang bikin makin suka.' },
+  { topicId: 'mobile-legends-rank-grind', category: 'mobile', topicSummary: 'Cerita perjuangan push rank di Mobile Legends bareng squad, drama menang-kalah pas lagi deket ke tier berikutnya.' },
+  { topicId: 'mobile-gacha-luck-story', category: 'mobile', topicSummary: 'Cerita soal keberuntungan (atau apesnya) waktu gacha di game mobile favorit, rasanya pas dapet/gagal dapet item impian.' },
+  { topicId: 'mobile-gaming-commute', category: 'mobile', topicSummary: 'Cerita main game mobile buat ngisi waktu pas di angkot/KRL/macetan — game mobile jadi teman ngebunuh waktu paling praktis.' },
+  { topicId: 'squad-mabar-mobile-legends', category: 'mobile', topicSummary: 'Kedekatan sama squad tetap buat mabar (main bareng) game mobile — obrolan random di voice chat yang jadi kenangan.' },
+  { topicId: 'first-mobile-game-obsession', category: 'mobile', topicSummary: 'Kenangan pertama kali kecanduan sebuah game mobile, sampai lupa waktu/baterai HP abis gara-gara keasyikan main.' },
+  { topicId: 'mobile-vs-console-lifestyle', category: 'mobile', topicSummary: 'Obrolan santai soal kenapa game mobile jadi pilihan praktis buat main sehari-hari dibanding harus nyalain console dulu.' },
+  { topicId: 'clutch-moment-mobile-esports', category: 'mobile', topicSummary: 'Momen clutch/comeback dramatis waktu nonton atau main pertandingan esports mobile (MLBB, PUBGM, dll).' },
+  { topicId: 'battle-royale-mobile-victory', category: 'mobile', topicSummary: 'Cerita momen menang chicken dinner/victory di game battle royale mobile setelah sekian kali gagal.' },
 ];
 
 function pickRandom(list) {
@@ -61,13 +71,29 @@ function topicFromFileName(fileName) {
 }
 
 /**
- * Pilih satu topik. Kalau ada file gambar/video menunggu di assets/branding/, topik
- * DIAMBIL DARI NAMA FILE itu (di luar TOPIC_POOL, tidak kena dedupe — file yang sama
- * boleh terus dicoba tiap run sampai berhasil dipost, karena filenya sendiri hilang
- * begitu sukses). Kalau folder kosong, baru fallback ke pool statis dengan dedupe biasa.
- * @returns {Promise<{topicId: string, topicSummary: string, category: string|null} | null>}
+ * Pilih satu topik, urutan prioritas:
+ * 1. `forcedTopicId` (lewat flag CLI manual, lihat index.js) — cari di TOPIC_POOL,
+ *    lewati semua pengecekan lain (dipakai buat testing manual satu topik tertentu).
+ * 2. File gambar/video menunggu di assets/branding/ — topik DIAMBIL DARI NAMA FILE
+ *    (di luar TOPIC_POOL, tidak kena dedupe — file yang sama boleh terus dicoba tiap
+ *    run sampai berhasil dipost, karena filenya sendiri hilang begitu sukses).
+ * 3. Berita gaming terbaru (RSS, lihat news-source.js) yang belum pernah dipakai —
+ *    kalau gagal ambil/tidak ada yang baru, diam-diam lanjut ke opsi berikutnya.
+ * 4. Fallback: TOPIC_POOL statis dengan dedupe biasa.
+ * @param {string} [forcedTopicId]
+ * @returns {Promise<{topicId: string, topicSummary: string, category: string|null, sourceUrl?: string} | null>}
  */
-async function pickTopic() {
+async function pickTopic(forcedTopicId) {
+  if (forcedTopicId) {
+    const forced = TOPIC_POOL.find((t) => t.topicId === forcedTopicId);
+    if (!forced) {
+      throw new TopicSourceError(
+        `Topik "${forcedTopicId}" tidak ditemukan di TOPIC_POOL. Topik yang tersedia: ${TOPIC_POOL.map((t) => t.topicId).join(', ')}`
+      );
+    }
+    return forced;
+  }
+
   const asset = mediaAsset.peek();
   if (asset.mode !== 'none') {
     return topicFromFileName(asset.fileName);
@@ -79,6 +105,9 @@ async function pickTopic() {
   } catch (err) {
     throw new TopicSourceError('Gagal membaca riwayat topik dari store', err);
   }
+
+  const newsTopic = await newsSource.pickNewsTopic(recentTopicIds);
+  if (newsTopic) return newsTopic;
 
   const candidates = TOPIC_POOL.filter((t) => !recentTopicIds.includes(t.topicId));
   if (candidates.length === 0) return null;

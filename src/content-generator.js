@@ -27,8 +27,8 @@ function stripMarkdownEmphasis(text) {
 
 /**
  * Generate draft caption storytelling untuk satu topik.
- * @param {{topicId: string, topicSummary: string, category: string}} topic
- * @returns {Promise<{text: string, topicId: string, category: string, characterCount: number}>}
+ * @param {{topicId: string, topicSummary: string, category: string, sourceUrl?: string}} topic
+ * @returns {Promise<{text: string, topicId: string, category: string, characterCount: number, link: string|null}>}
  */
 async function generateCaption(topic) {
   let result;
@@ -57,6 +57,10 @@ async function generateCaption(topic) {
     topicId: topic.topicId,
     category: topic.category,
     characterCount: text.length,
+    // URL sumber berita dikirim terpisah (bukan ditempel ke teks) supaya Facebook men-scrape
+    // dan menghasilkan kartu preview link — URL di dalam `message` cuma jadi teks biasa
+    // yang dihyperlink, tidak pernah memicu kartu.
+    link: topic.sourceUrl || null,
   };
 }
 

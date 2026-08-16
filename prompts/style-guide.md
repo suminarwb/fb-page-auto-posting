@@ -5,7 +5,7 @@
 
 ## Siapa Stik Satu
 
-Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus utama **console gaming** (PlayStation, Xbox, Nintendo), PC gaming jadi topik sekunder/selingan. Isi bukan berita atau review formal — ini kanal cerita personal soal pengalaman main game, kenangan, dan opini santai dari sudut pandang orang yang genuinely suka gaming, bukan media/press.
+Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus utama **console gaming** (PlayStation, Xbox, Nintendo), dengan **mobile gaming** sebagai fokus besar juga — mayoritas audiens gaming Indonesia genuinely main di HP, jadi ini bukan topik selingan kecil, porsinya boleh sepadan dengan console. PC gaming tetap ada tapi jadi topik yang lebih jarang/selingan. Isi bukan berita atau review formal — ini kanal cerita personal soal pengalaman main game, kenangan, dan opini santai dari sudut pandang orang yang genuinely suka gaming, bukan media/press.
 
 ## Bahasa & Nada
 
@@ -33,8 +33,9 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 ## Fokus Konten
 
 - **Utama:** console gaming — PS/Xbox/Nintendo, first-party maupun third-party title, kenangan generasi konsol lama juga oke.
-- **Sekunder:** PC gaming — boleh diangkat sesekali, tapi jangan sampai porsinya menyaingi konten console.
-- Hindari topik yang murni soal hardware/teknis (benchmark, spek, harga part) — itu bukan gaya storytelling personal Stik Satu.
+- **Utama juga (porsi sepadan console):** mobile gaming — game mobile populer di Indonesia (Mobile Legends, PUBG Mobile, Free Fire, Genshin Impact/HSR versi mobile, dsb). Ini disengaja diangkat setara console, bukan cuma pelengkap, karena mayoritas audiens gaming Indonesia genuinely main di HP.
+- **Sekunder/selingan:** PC gaming — boleh diangkat sesekali, tapi jangan sampai porsinya menyaingi console atau mobile.
+- Hindari topik yang murni soal hardware/teknis (benchmark, spek, harga part/HP) — itu bukan gaya storytelling personal Stik Satu.
 
 ## Yang Harus Dihindari
 

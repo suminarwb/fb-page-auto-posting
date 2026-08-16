@@ -2,16 +2,31 @@
 // src/index.js
 // Entrypoint. `--once` = trigger manual satu kali (Fase 1). Tanpa flag = start scheduler
 // dan tetap hidup, jalan sesuai jadwal di config.json (Fase 2) — lihat 05-IMPLEMENTATION-PLAN.md.
+// `--once` bisa dikombinasi dengan `--<topicId>` (mis. `--best-character-in-game`) untuk
+// paksa pakai satu topik tertentu dari TOPIC_POOL, buat testing manual satu topik.
 
-async function runOnce() {
+/**
+ * Cari flag CLI berbentuk `--<topicId>` selain `--once` — dipakai sebagai forcedTopicId.
+ * @param {string[]} argv
+ * @returns {string|undefined}
+ */
+function parseForcedTopicId(argv) {
+  const flag = argv.find((arg) => arg.startsWith('--') && arg !== '--once');
+  return flag ? flag.slice(2) : undefined;
+}
+
+async function runOnce(forcedTopicId) {
   const logger = require('./logger');
-  logger.info({ stage: 'pipeline', status: 'started' }, 'Manual run (--once) mulai');
+  logger.info(
+    { stage: 'pipeline', status: 'started', forcedTopicId: forcedTopicId ?? null },
+    forcedTopicId ? `Manual run (--once) mulai, topik dipaksa: "${forcedTopicId}"` : 'Manual run (--once) mulai'
+  );
 
   try {
     // Require di dalam fungsi (bukan di top-level file) supaya error konfigurasi
     // (mis. secret .env belum diisi) tertangkap dan dilog rapi, bukan raw stack trace.
     const { runPipeline } = require('./pipeline');
-    const result = await runPipeline();
+    const result = await runPipeline({ forcedTopicId });
     logger.info({ stage: 'pipeline', status: result.status, ...result }, 'Manual run selesai');
     process.exit(result.status === 'published' || result.status === 'skipped' ? 0 : 2);
   } catch (err) {
@@ -53,10 +68,20 @@ function runScheduled() {
 }
 
 function main() {
-  const once = process.argv.includes('--once');
+  const argv = process.argv.slice(2);
+  const once = argv.includes('--once');
+  const forcedTopicId = parseForcedTopicId(argv);
+
   if (once) {
-    runOnce();
+    runOnce(forcedTopicId);
   } else {
+    if (forcedTopicId) {
+      const logger = require('./logger');
+      logger.warn(
+        { stage: 'index', status: 'ignored-flag', forcedTopicId },
+        `Flag "--${forcedTopicId}" diabaikan — memaksa topik cuma berlaku bersama --once, bukan mode scheduler.`
+      );
+    }
     runScheduled();
   }
 }

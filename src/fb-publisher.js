@@ -70,10 +70,15 @@ async function callGraphApi(url, options) {
 }
 
 async function publishText(draft, ctx) {
+  const params = { message: draft.text, access_token: ctx.accessToken };
+  // `link` sebagai field terpisah (bukan ditempel ke `message`) supaya Facebook men-scrape
+  // URL-nya dan menampilkan kartu preview (gambar+judul+deskripsi dari OG tags sumbernya).
+  if (draft.link) params.link = draft.link;
+
   const body = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${ctx.pageId}/feed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ message: draft.text, access_token: ctx.accessToken }),
+    body: new URLSearchParams(params),
   });
   if (!body?.id) throw new PublishError('Response Facebook tidak berisi id post');
   return { fbPostId: body.id, mediaMode: 'none', mediaFile: null };
@@ -88,7 +93,9 @@ async function publishImage(draft, ctx, asset) {
   const fileBuffer = fs.readFileSync(asset.absolutePath);
   const formData = new FormData();
   formData.append('source', new Blob([fileBuffer], { type: guessMimeType(asset.fileName) }), asset.fileName);
-  formData.append('caption', draft.text);
+  // /photos tidak punya mekanisme kartu link seperti /feed — kalau ada draft.link,
+  // tempel sebagai teks biasa di caption supaya URL sumbernya tidak hilang.
+  formData.append('caption', draft.link ? `${draft.text}\n\n${draft.link}` : draft.text);
   formData.append('access_token', ctx.accessToken);
 
   const body = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${ctx.pageId}/photos`, {
@@ -165,7 +172,9 @@ async function publishVideo(draft, ctx, asset) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       fbuploader_video_file_chunk: fileHandle,
-      description: draft.text,
+      // /videos juga tidak punya mekanisme kartu link — sama seperti /photos, tempel
+      // draft.link (kalau ada) sebagai teks biasa di description.
+      description: draft.link ? `${draft.text}\n\n${draft.link}` : draft.text,
       access_token: ctx.accessToken,
     }),
   });

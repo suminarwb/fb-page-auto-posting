@@ -17,5 +17,13 @@
     "enabled": true,
     "provider": "cloudflare",
     "model": "@cf/black-forest-labs/flux-1-schnell"
+  },
+  "news": {
+    "enabled": true,
+    "feeds": [
+      { "name": "IGN", "url": "https://www.ign.com/rss/articles/feed?tags=games" },
+      { "name": "GameSpot", "url": "https://www.gamespot.com/feeds/mashup/" },
+      { "name": "Gamebrott", "url": "https://gamebrott.com/feed/" }
+    ]
   }
 }

@@ -1,6 +1,6 @@
 # Stik Satu — Facebook Page Auto-Posting Agent
 
-Agent Node.js yang otomatis membuat dan mempublikasikan konten storytelling gaming ke Facebook Page **Stik Satu** (komunitas gaming Indonesia, fokus console gaming, PC sekunder) — dari cari topik, generate caption via AI, self-verify, sampai publish ke Facebook, dengan jadwal terkontrol dan guardrail keamanan di setiap langkah.
+Agent Node.js yang otomatis membuat dan mempublikasikan konten storytelling gaming ke Facebook Page **Stik Satu** (komunitas gaming Indonesia, fokus console gaming & mobile gaming, PC sekunder) — dari cari topik, generate caption via AI, self-verify, sampai publish ke Facebook, dengan jadwal terkontrol dan guardrail keamanan di setiap langkah.
 
 ## Fitur
 
@@ -10,7 +10,9 @@ Agent Node.js yang otomatis membuat dan mempublikasikan konten storytelling gami
 - Publish otomatis ke Facebook Page: teks, gambar, atau video, dipilih otomatis dari isi folder `assets/branding/` — tidak perlu ubah config.
 - Kalau ada file gambar/video menunggu, topik postingan diambil dari nama file itu sendiri (bukan dari pool acak), dan file-nya otomatis terhapus setelah berhasil dipost.
 - Kalau folder `assets/branding/` kosong, agent generate sendiri gambar fallback (via Cloudflare Workers AI, gratis) supaya post tetap punya elemen visual — gagal generate tidak pernah menggagalkan publish, cukup fallback ke teks.
-- Setiap caption otomatis menyertakan hashtag relevan (topik + `#StikSatu`) untuk memperluas jangkauan — dicek juga oleh verifier.
+- Bisa juga ambil topik dari **berita gaming terbaru** (RSS IGN, GameSpot & Gamebrott) sebagai sumber topik prioritas terendah — caption ditulis sebagai reaksi personal, bukan artikel ditulis ulang, plus link sumber berita di baris terakhir (tanpa re-host gambar berita, demi aman hak cipta).
+- Setiap caption otomatis menyertakan hashtag relevan (topik + `#StikSatu`) untuk memperluas jangkauan, jumlahnya tidak dibatasi selama relevan — dicek juga oleh verifier.
+- Bisa dipaksa posting topik tertentu lewat CLI (`--once --<topicId>`) untuk testing manual, di luar rotasi dedupe otomatis.
 - Retry + backoff untuk error transient, tanpa retry tak berujung untuk error permanen (token invalid, dll).
 - Jadwal otomatis (cron) dengan timezone Indonesia (WIB), berjalan sebagai proses long-running (siap dipakai dengan `pm2`).
 - Log terstruktur (JSON) dan audit trail lengkap di SQLite lokal.
@@ -99,6 +101,14 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
     "enabled": true,
     "provider": "cloudflare",
     "model": "@cf/black-forest-labs/flux-1-schnell"
+  },
+  "news": {
+    "enabled": true,
+    "feeds": [
+      { "name": "IGN", "url": "https://www.ign.com/rss/articles/feed?tags=games" },
+      { "name": "GameSpot", "url": "https://www.gamespot.com/feeds/mashup/" },
+      { "name": "Gamebrott", "url": "https://gamebrott.com/feed/" }
+    ]
   }
 }
 ```
@@ -111,6 +121,8 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
 - **`facebook.graphApiVersion`** — cek versi terbaru di [Graph API changelog](https://developers.facebook.com/docs/graph-api/changelog) Meta.
 - **`imageGeneration.enabled`** — set `false` untuk mematikan total fitur auto-generate gambar (fallback jadi selalu teks-only kalau `assets/branding/` kosong).
 - **`imageGeneration.provider`/`model`** — saat ini cuma didukung `"cloudflare"` dengan model image-gen apa pun yang tersedia di [katalog Workers AI](https://developers.cloudflare.com/workers-ai/models/) (default `flux-1-schnell`, cepat & gratis untuk skala kecil).
+- **`news.enabled`** — set `false` untuk mematikan total sumber topik dari berita (topik selalu diambil dari `TOPIC_POOL` atau nama file media).
+- **`news.feeds`** — daftar RSS feed gaming yang dipantau, tiap entry `{ "name": ..., "url": ... }`. Lihat bagian "Topik dari Berita Gaming (RSS)" di bawah untuk detail mekanismenya dan cara menambah feed lain.
 
 ## Setup Kredensial Facebook
 
@@ -181,6 +193,14 @@ npm run once
 
 Cocok untuk testing awal. **Ini akan publish sungguhan ke Page yang di-set di `FB_PAGE_ID`** kalau verifier lolos — pertimbangkan pakai Page test dulu untuk percobaan pertama.
 
+### Paksa topik tertentu (testing manual)
+
+```bash
+node src/index.js --once --best-character-in-game
+```
+
+Flag apa pun selain `--once` dibaca sebagai `topicId` yang dipaksa dipakai (harus salah satu `topicId` di `TOPIC_POOL`, lihat `src/topic-source.js`) — dedupe otomatis dilewati untuk topik yang dipaksa ini. Kalau `topicId`-nya tidak ditemukan, agent berhenti dan menampilkan daftar semua `topicId` yang valid. Flag ini **hanya berlaku bareng `--once`** — dipakai tanpa `--once`, flag diabaikan (dengan warning) dan scheduler tetap jalan normal.
+
 ### Mode terjadwal (full-auto)
 
 ```bash
@@ -207,7 +227,7 @@ Tidak ada config yang perlu diubah — cukup taruh file di `assets/branding/`:
 
 - **Ada file gambar** (`.jpg/.jpeg/.png/.gif/.bmp/.tiff`) → publish otomatis lewat `/photos`. Batas ukuran 4MB (limit Facebook).
 - **Tidak ada gambar tapi ada video** (`.mp4/.mov`) → publish otomatis lewat resumable upload video (butuh `FB_APP_ID` di `.env`), dikirim per-chunk 4MB.
-- **Folder kosong** → agent generate sendiri 1 gambar (via Cloudflare Workers AI, kalau `imageGeneration.enabled`) berdasarkan topik yang lagi diproses, lalu publish gambar itu. Kalau generate gagal (atau fitur dimatikan), fallback ke publish teks saja — tidak pernah menggagalkan run.
+- **Folder kosong** → agent generate sendiri 1 gambar (via Cloudflare Workers AI, kalau `imageGeneration.enabled`) berdasarkan topik yang lagi diproses, lalu publish gambar itu. Kalau generate gagal (atau fitur dimatikan), fallback ke publish teks saja — tidak pernah menggagalkan run. **Pengecualian:** untuk topik dari berita, langkah ini dilewati sama sekali (selalu teks-only + URL sumber) — lihat "Topik dari Berita Gaming (RSS)".
 - **Ada gambar dan video sekaligus** → gambar diproses duluan, video menunggu run berikutnya.
 - **Ada beberapa file** → dipilih satu secara alfabetis per jenis (beri prefix angka kalau mau atur urutan, mis. `01-cover.jpg`).
 
@@ -217,11 +237,31 @@ File yang dipakai (baik upload manual maupun hasil generate) **otomatis terhapus
 
 Panduan visual untuk gambar hasil generate ada di `prompts/image-style-guide.md` — sengaja diarahkan ke gaya generik/abstrak (mood gaming, bukan adegan/karakter spesifik dari game tertentu) untuk menghindari risiko hak cipta.
 
+## Topik dari Berita Gaming (RSS)
+
+Selain pool topik statis, agent bisa ambil topik dari berita gaming terbaru lewat RSS **IGN**, **GameSpot**, dan **Gamebrott** (`src/news-source.js`) — Gamebrott berbahasa Indonesia, dua lainnya berbahasa Inggris (tetap diterjemahkan jadi reaksi personal berbahasa Indonesia oleh generator). Urutan prioritas pemilihan topik tiap run (`src/topic-source.js`):
+
+1. **Topik paksa** lewat CLI (lihat "Paksa topik tertentu" di atas), kalau ada.
+2. **File media menunggu** di `assets/branding/` — topik diambil dari nama file.
+3. **Berita terbaru** dari RSS feed yang belum pernah dipakai (dedupe berdasarkan GUID artikel).
+4. **Pool topik statis** (`TOPIC_POOL`) dengan dedupe berdasarkan hari, seperti biasa.
+
+Berita sengaja jadi prioritas **terendah** — supaya tidak mendominasi feed dan tetap seimbang dengan konten storytelling reguler.
+
+Yang perlu diketahui soal fitur ini:
+
+- **Caption tetap reaksi personal**, bukan artikel berita ditulis ulang — lihat instruksi khusus di `prompts/generator-system.md`. Verifier juga tahu membedakan ini (lihat kriteria #1 di `prompts/verifier-system.md`).
+- **URL sumber berita dikirim terpisah dari teks caption** (field `link` di `draft`, diisi oleh kode `src/content-generator.js`, bukan ditulis AI — supaya selalu akurat, tidak berisiko dipotong/diparafrase model) lalu dikirim lewat parameter `link` ke endpoint `/feed` Facebook (`src/fb-publisher.js`). Ini penting: URL yang cuma ditempel di dalam teks `message` **tidak** memicu kartu preview di Facebook — cuma jadi teks biasa yang dihyperlink. Hanya dengan parameter `link` terpisah Facebook benar-benar men-scrape halamannya dan menghasilkan kartu (gambar + judul + deskripsi dari IGN/GameSpot sendiri).
+- **Tidak pernah re-host gambar dari artikel berita** — ini keputusan sengaja untuk menghindari pelanggaran hak cipta foto media lain. **Image generator otomatis (Cloudflare) juga tidak pernah dijalankan untuk topik berita**, walau `imageGeneration.enabled` dan `assets/branding/` kosong — post berita selalu teks-only (plus URL sumber), karena Facebook sudah otomatis membuat preview kartu dari link tersebut; menambah gambar AI generik di sini cuma redundan/berpotensi membingungkan.
+- **Kotaku tidak didukung** — RSS-nya diblokir oleh proteksi bot Cloudflare (butuh headless browser untuk bypass, di luar scope project ini).
+- Kalau semua feed gagal diakses (down, berubah format, dll), fitur ini **tidak pernah menggagalkan run** — pipeline otomatis lanjut ke pool topik statis seperti biasa, cukup log warning per feed yang gagal.
+- Untuk menambah/mengurangi feed, edit `news.feeds` di `config.json` — feed lain harus format RSS/XML standar dan idealnya sudah ada tag/kategori khusus game (supaya tidak ikut mengambil berita non-gaming dari media umum).
+
 ## Kustomisasi
 
 ### Brand voice
 
-Edit `prompts/style-guide.md` — panduan gaya bahasa, fokus konten, batasan, dan aturan hashtag (wajib 2-4 per caption) yang dipakai baik oleh generator maupun verifier. Ini file yang paling menentukan karakter caption yang dihasilkan.
+Edit `prompts/style-guide.md` — panduan gaya bahasa, fokus konten, batasan, dan aturan hashtag (wajib ada, jumlah tidak dibatasi selama relevan) yang dipakai baik oleh generator maupun verifier. Ini file yang paling menentukan karakter caption yang dihasilkan.
 
 ### Gaya visual gambar auto-generate
 
@@ -242,8 +282,9 @@ src/
   index.js               entrypoint (--once = manual, tanpa flag = scheduler)
   pipeline.js             orchestrator: urutan penuh + retry/backoff
   scheduler.js            node-cron, baca jadwal dari config.json
-  topic-source.js         pool topik + dedupe, atau derive dari nama file media
-  content-generator.js    generate caption via llm-client
+  topic-source.js         pool topik + dedupe, nama file media, atau berita (prioritas)
+  news-source.js          fetch & parse RSS berita gaming (IGN, GameSpot)
+  content-generator.js    generate caption via llm-client, sisip URL sumber berita
   verifier.js             self-verify caption (structured JSON output)
   image-generator.js      generate gambar fallback via llm-client (Cloudflare)
   llm-client.js           satu-satunya modul yang bicara ke SDK/API provider AI
@@ -294,3 +335,6 @@ Cek kuota Cloudflare Workers AI (`Ready for testing`/rate limit di dashboard Clo
 
 **Caption tidak ada hashtag**
 Verifier seharusnya menolak caption tanpa hashtag (lihat kriteria di `prompts/verifier-system.md`) — kalau lolos tanpa hashtag, cek apakah `prompts/style-guide.md`/`generator-system.md` sempat diedit dan instruksi hashtag-nya hilang.
+
+**Topik berita tidak pernah muncul / selalu fallback ke pool**
+Berita memang prioritas terendah — cek dulu apakah ada file media menunggu di `assets/branding/` (prioritas lebih tinggi). Kalau memang kosong tapi tetap tidak muncul, cek log (`stage: "news-source"`) untuk error fetch/parse per feed, atau kemungkinan semua artikel di feed sudah pernah dipakai (dedupe berdasarkan GUID, tidak diulang).
