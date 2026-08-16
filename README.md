@@ -87,7 +87,7 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
 
 ```json
 {
-  "schedule": { "cronExpressions": ["0 19 * * 1-5", "0 13 * * 0,6"] },
+  "schedule": { "cronExpressions": ["0 9 * * *", "0 12 * * 1-5", "0 13 * * 0,6", "0 19 * * *"] },
   "dedupeWindowDays": 14,
   "llm": {
     "generatorProvider": "gemini",
@@ -104,6 +104,7 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
   },
   "news": {
     "enabled": true,
+    "preferredHours": { "start": 8, "end": 10 },
     "feeds": [
       { "name": "IGN", "url": "https://www.ign.com/rss/articles/feed?tags=games" },
       { "name": "GameSpot", "url": "https://www.gamespot.com/feeds/mashup/" },
@@ -113,7 +114,7 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
 }
 ```
 
-- **`schedule.cronExpressions`** — array cron expression standar (`sec? min hour day month weekday`), dipakai `src/scheduler.js`. Default: weekday jam 19:00 WIB, weekend jam 13:00 WIB.
+- **`schedule.cronExpressions`** — array cron expression standar (`sec? min hour day month weekday`), dipakai `src/scheduler.js`. Default: jam 09:00 setiap hari (masuk jendela `news.preferredHours`, khusus berita), jam 12:00 weekday, jam 13:00 weekend, dan jam 19:00 setiap hari.
 - **`dedupeWindowDays`** — berapa hari topik dari pool tidak boleh diulang.
 - **`llm.generatorProvider`/`verifierProvider`** — `"anthropic"` | `"openai"` | `"gemini"`. Boleh beda antara generator dan verifier (mis. model besar untuk generate, model ringan untuk verify).
 - **`llm.generatorModel`/`verifierModel`** — **cek dulu daftar model terbaru dari provider terkait sebelum diisi** (model sering deprecated/berganti nama — lihat bagian Troubleshooting).
@@ -122,6 +123,7 @@ Isi hanya secret provider AI yang benar-benar dipakai (lihat `llm.generatorProvi
 - **`imageGeneration.enabled`** — set `false` untuk mematikan total fitur auto-generate gambar (fallback jadi selalu teks-only kalau `assets/branding/` kosong).
 - **`imageGeneration.provider`/`model`** — saat ini cuma didukung `"cloudflare"` dengan model image-gen apa pun yang tersedia di [katalog Workers AI](https://developers.cloudflare.com/workers-ai/models/) (default `flux-1-schnell`, cepat & gratis untuk skala kecil).
 - **`news.enabled`** — set `false` untuk mematikan total sumber topik dari berita (topik selalu diambil dari `TOPIC_POOL` atau nama file media).
+- **`news.preferredHours`** — jendela jam WIB (`{ "start": ..., "end": ... }`, format 24 jam, `end` eksklusif) tempat topik berita boleh dicoba. Di luar jam ini, topik selalu random dari `TOPIC_POOL`. Hapus field ini kalau mau berita bisa muncul kapan saja.
 - **`news.feeds`** — daftar RSS feed gaming yang dipantau, tiap entry `{ "name": ..., "url": ... }`. Lihat bagian "Topik dari Berita Gaming (RSS)" di bawah untuk detail mekanismenya dan cara menambah feed lain.
 
 ## Setup Kredensial Facebook
@@ -219,6 +221,8 @@ pm2 save
 pm2 startup   # ikuti instruksi yang muncul, supaya pm2 auto-start saat server reboot
 ```
 
+> **Perintah di atas untuk deploy di Linux VPS**, bukan di mesin Windows lokal. `pm2 start`/`pm2 save` tetap jalan normal di Windows untuk testing, tapi `pm2 startup` khusus mengenali init system Linux (systemd/upstart) atau macOS (launchd) — di Windows akan gagal dengan `Error: Init system not found`. Kalau itu terjadi saat testing lokal, abaikan saja dan jalankan `pm2 startup` yang sesungguhnya nanti langsung di VPS Linux tempat production berjalan.
+
 Sebelum benar-benar melepas ke mode full-auto tanpa pengawasan, pantau manual beberapa post pertama yang tayang otomatis (soft-launch) untuk memastikan brand voice dan pemilihan topik sesuai ekspektasi.
 
 ## Posting dengan Gambar atau Video
@@ -242,11 +246,13 @@ Panduan visual untuk gambar hasil generate ada di `prompts/image-style-guide.md`
 Selain pool topik statis, agent bisa ambil topik dari berita gaming terbaru lewat RSS **IGN**, **GameSpot**, dan **Gamebrott** (`src/news-source.js`) — Gamebrott berbahasa Indonesia, dua lainnya berbahasa Inggris (tetap diterjemahkan jadi reaksi personal berbahasa Indonesia oleh generator). Urutan prioritas pemilihan topik tiap run (`src/topic-source.js`):
 
 1. **Topik paksa** lewat CLI (lihat "Paksa topik tertentu" di atas), kalau ada.
-2. **File media menunggu** di `assets/branding/` — topik diambil dari nama file.
-3. **Berita terbaru** dari RSS feed yang belum pernah dipakai (dedupe berdasarkan GUID artikel).
+2. **File media menunggu** di `assets/branding/` — topik diambil dari nama file. Prioritas ini berlaku **kapan pun**, tidak peduli jam berapa sekarang.
+3. **Berita terbaru** dari RSS feed yang belum pernah dipakai (dedupe berdasarkan GUID artikel) — **hanya dicoba kalau jam sekarang (WIB) masuk jendela `news.preferredHours`** di `config.json` (default 08:00-10:00 pagi). Di luar jam itu, berita dilewati sama sekali, langsung ke pool.
 4. **Pool topik statis** (`TOPIC_POOL`) dengan dedupe berdasarkan hari, seperti biasa.
 
-Berita sengaja jadi prioritas **terendah** — supaya tidak mendominasi feed dan tetap seimbang dengan konten storytelling reguler.
+Berita sengaja dibatasi ke jam pagi tertentu — supaya tidak mendominasi feed dan tetap seimbang dengan konten storytelling reguler dari pool.
+
+**Mengatur jam khusus berita:** ubah `news.preferredHours` di `config.json`, mis. `{ "start": 8, "end": 10 }` berarti jam 08:00 sampai sebelum 10:00 WIB. Kalau `preferredHours` dihapus dari config, berita jadi boleh dicoba kapan saja (perilaku lama, tanpa batasan jam). Jendela ini dicek berdasarkan **jam WIB (`Asia/Jakarta`)**, bukan timezone server tempat proses berjalan — jadi tetap akurat walau server di-hosting di timezone lain.
 
 Yang perlu diketahui soal fitur ini:
 
@@ -335,6 +341,9 @@ Cek kuota Cloudflare Workers AI (`Ready for testing`/rate limit di dashboard Clo
 
 **Caption tidak ada hashtag**
 Verifier seharusnya menolak caption tanpa hashtag (lihat kriteria di `prompts/verifier-system.md`) — kalau lolos tanpa hashtag, cek apakah `prompts/style-guide.md`/`generator-system.md` sempat diedit dan instruksi hashtag-nya hilang.
+
+**`pm2 startup` gagal: `Error: Init system not found`**
+Normal kalau dijalankan di Windows — pm2 cuma bisa mendeteksi init system Linux (systemd/upstart) atau macOS (launchd), tidak ada integrasi Windows. `pm2 start`/`pm2 save` tetap bisa dipakai untuk testing di Windows; `pm2 startup` cukup dijalankan nanti langsung di VPS Linux tempat production sungguhan berjalan.
 
 **Topik berita tidak pernah muncul / selalu fallback ke pool**
 Berita memang prioritas terendah — cek dulu apakah ada file media menunggu di `assets/branding/` (prioritas lebih tinggi). Kalau memang kosong tapi tetap tidak muncul, cek log (`stage: "news-source"`) untuk error fetch/parse per feed, atau kemungkinan semua artikel di feed sudah pernah dipakai (dedupe berdasarkan GUID, tidak diulang).

@@ -46,6 +46,21 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+const JAKARTA_HOUR_FORMAT = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jakarta', hour: 'numeric', hourCycle: 'h23' });
+
+/**
+ * Cek apakah jam sekarang (WIB, bukan timezone server) ada di jam-jam yang
+ * dikhususkan buat topik berita (`news.preferredHours` di config.json).
+ * Kalau `preferredHours` tidak diisi, anggap tidak ada batasan jam (selalu boleh berita).
+ * @returns {boolean}
+ */
+function isWithinNewsPreferredHours() {
+  const window = config.news?.preferredHours;
+  if (!window) return true;
+  const hour = Number(JAKARTA_HOUR_FORMAT.format(new Date()));
+  return hour >= window.start && hour < window.end;
+}
+
 /**
  * Derive topik langsung dari nama file gambar/video yang menunggu di assets/branding/ —
  * topik ini boleh sama sekali tidak ada di TOPIC_POOL, karena tujuannya caption harus
@@ -76,9 +91,13 @@ function topicFromFileName(fileName) {
  *    lewati semua pengecekan lain (dipakai buat testing manual satu topik tertentu).
  * 2. File gambar/video menunggu di assets/branding/ — topik DIAMBIL DARI NAMA FILE
  *    (di luar TOPIC_POOL, tidak kena dedupe — file yang sama boleh terus dicoba tiap
- *    run sampai berhasil dipost, karena filenya sendiri hilang begitu sukses).
- * 3. Berita gaming terbaru (RSS, lihat news-source.js) yang belum pernah dipakai —
- *    kalau gagal ambil/tidak ada yang baru, diam-diam lanjut ke opsi berikutnya.
+ *    run sampai berhasil dipost, karena filenya sendiri hilang begitu sukses). Ini
+ *    prioritas tertinggi setelah forced topic, TIDAK peduli jam berapa sekarang.
+ * 3. Berita gaming terbaru (RSS, lihat news-source.js) — HANYA dicoba kalau jam
+ *    sekarang (WIB) ada di jendela `news.preferredHours` di config.json (mis. jam
+ *    08:00-10:00 pagi). Di luar jendela itu, berita dilewati sama sekali, langsung
+ *    ke pool. Kalau di dalam jendela tapi gagal ambil/tidak ada yang baru, diam-diam
+ *    tetap lanjut ke pool (fail-safe, jangan sampai run kosong).
  * 4. Fallback: TOPIC_POOL statis dengan dedupe biasa.
  * @param {string} [forcedTopicId]
  * @returns {Promise<{topicId: string, topicSummary: string, category: string|null, sourceUrl?: string} | null>}
@@ -106,8 +125,10 @@ async function pickTopic(forcedTopicId) {
     throw new TopicSourceError('Gagal membaca riwayat topik dari store', err);
   }
 
-  const newsTopic = await newsSource.pickNewsTopic(recentTopicIds);
-  if (newsTopic) return newsTopic;
+  if (isWithinNewsPreferredHours()) {
+    const newsTopic = await newsSource.pickNewsTopic(recentTopicIds);
+    if (newsTopic) return newsTopic;
+  }
 
   const candidates = TOPIC_POOL.filter((t) => !recentTopicIds.includes(t.topicId));
   if (candidates.length === 0) return null;

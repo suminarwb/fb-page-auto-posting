@@ -1,6 +1,6 @@
 {
   "schedule": {
-    "cronExpressions": ["0 19 * * 1-5", "0 13 * * 0,6"]
+    "cronExpressions": ["0 9 * * *", "0 12 * * 1-5", "0 13 * * 0,6", "0 19 * * *"]
   },
   "dedupeWindowDays": 14,
   "llm": {
@@ -20,6 +20,7 @@
   },
   "news": {
     "enabled": true,
+    "preferredHours": { "start": 8, "end": 10 },
     "feeds": [
       { "name": "IGN", "url": "https://www.ign.com/rss/articles/feed?tags=games" },
       { "name": "GameSpot", "url": "https://www.gamespot.com/feeds/mashup/" },
