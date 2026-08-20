@@ -75,7 +75,6 @@ cp .env.example .env
 | `GEMINI_API_KEY` | Kalau pakai provider `gemini` | API key Gemini |
 | `FB_PAGE_ACCESS_TOKEN` | **Wajib** | Page Access Token (lihat panduan di bawah) |
 | `FB_PAGE_ID` | **Wajib** | ID Facebook Page yang mau di-post |
-| `FB_APP_ID` | Wajib kalau mau posting **video** | App ID Facebook App (dipakai untuk resumable upload) |
 | `CLOUDFLARE_ACCOUNT_ID` | Wajib kalau `imageGeneration.enabled` | Account ID Cloudflare (lihat "Setup Cloudflare Workers AI") |
 | `CLOUDFLARE_API_TOKEN` | Wajib kalau `imageGeneration.enabled` | API Token dengan permission Workers AI |
 
@@ -230,7 +229,7 @@ Sebelum benar-benar melepas ke mode full-auto tanpa pengawasan, pantau manual be
 Tidak ada config yang perlu diubah — cukup taruh file di `assets/branding/`:
 
 - **Ada file gambar** (`.jpg/.jpeg/.png/.gif/.bmp/.tiff`) → publish otomatis lewat `/photos`. Batas ukuran 4MB (limit Facebook).
-- **Tidak ada gambar tapi ada video** (`.mp4/.mov`) → publish otomatis lewat resumable upload video (butuh `FB_APP_ID` di `.env`), dikirim per-chunk 4MB.
+- **Tidak ada gambar tapi ada video** (`.mp4/.mov`) → publish otomatis lewat upload langsung ke `/videos` (satu request multipart, sama seperti gambar) — tidak butuh `FB_APP_ID` sama sekali.
 - **Folder kosong** → agent generate sendiri 1 gambar (via Cloudflare Workers AI, kalau `imageGeneration.enabled`) berdasarkan topik yang lagi diproses, lalu publish gambar itu. Kalau generate gagal (atau fitur dimatikan), fallback ke publish teks saja — tidak pernah menggagalkan run. **Pengecualian:** untuk topik dari berita, langkah ini dilewati sama sekali (selalu teks-only + URL sumber) — lihat "Topik dari Berita Gaming (RSS)".
 - **Ada gambar dan video sekaligus** → gambar diproses duluan, video menunggu run berikutnya.
 - **Ada beberapa file** → dipilih satu secara alfabetis per jenis (beri prefix angka kalau mau atur urutan, mis. `01-cover.jpg`).
@@ -334,7 +333,7 @@ Model dengan "adaptive thinking" (Gemini 3.x) bisa menghabiskan sebagian besar t
 Cek `dedupeWindowDays` di `config.json` dan isi `TOPIC_POOL` di `src/topic-source.js` — pool yang terlalu kecil relatif ke window dedupe akan sering kehabisan kandidat (pipeline akan `skip`, bukan error).
 
 **Upload video gagal: `"There was a problem uploading your video file"` (code 6000)**
-Error ini sudah diklasifikasikan retryable (pipeline otomatis coba lagi), tapi kalau tetap gagal terus untuk video tertentu meski format/ukurannya wajar (H.264/AAC, MP4 standar), kemungkinan videonya terdeteksi sistem hak cipta Facebook (umum terjadi untuk rekaman gameplay dari game komersial) — pesan errornya sengaja generik/tidak menyebut hak cipta secara eksplisit. Coba video lain yang jelas bukan gameplay untuk konfirmasi.
+Ini pernah jadi masalah dengan implementasi lama (Resumable Upload API 3-tahap) — sempat diduga soal hak cipta konten gameplay, tapi ternyata **bukan** itu penyebabnya: dikonfirmasi 2026-08-20, file video yang sama persis berhasil publish lewat upload langsung (multipart biasa) padahal gagal terus lewat resumable API. Root cause presisnya di resumable API tidak pernah ditemukan, tapi sudah tidak relevan lagi — publisher sekarang pakai upload langsung ke `/videos` (sama seperti `/photos`), bukan resumable API. Kalau error ini tetap muncul di versi terbaru, kemungkinan besar penyebabnya lain (ukuran file terlalu besar, format tidak didukung, token/permission) — cek pesan error asli dari Facebook di log (`cause` field) untuk detailnya.
 
 **Generate gambar gagal / `imageGeneration` selalu fallback ke teks**
 Cek kuota Cloudflare Workers AI (`Ready for testing`/rate limit di dashboard Cloudflare) dan pastikan `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` di `.env` benar. Ini tidak pernah menggagalkan publish — cuma fallback diam-diam ke teks, jadi cek log (`stage: "image-generator"`) untuk pesan error aslinya.

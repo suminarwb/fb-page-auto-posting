@@ -108,80 +108,34 @@ async function publishImage(draft, ctx, asset) {
   return { fbPostId: body.post_id || body.id, mediaMode: 'image', mediaFile: asset.fileName };
 }
 
-async function uploadVideoChunks(ctx, uploadSessionId, absolutePath, fileLength) {
-  // Kirim file per-chunk (bukan sekaligus dalam satu request) — video nyata ~17MB
-  // pernah gagal dengan error Facebook "problem uploading your video file" (code
-  // 6000/subcode 1363019) saat dikirim dalam satu request penuh. Dokumentasi resmi
-  // menyebut mekanisme resume pakai file_offset per bagian, jadi kemungkinan besar
-  // memang didesain untuk chunking, bukan satu request raksasa.
-  const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB — belum ada angka resmi dari dokumentasi Meta
-  const fd = fs.openSync(absolutePath, 'r');
-  try {
-    let offset = 0;
-    while (offset < fileLength) {
-      const chunkLength = Math.min(CHUNK_SIZE, fileLength - offset);
-      const chunkBuffer = Buffer.alloc(chunkLength);
-      fs.readSync(fd, chunkBuffer, 0, chunkLength, offset);
-
-      const result = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${uploadSessionId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `OAuth ${ctx.accessToken}`,
-          file_offset: String(offset),
-        },
-        body: chunkBuffer,
-      });
-
-      if (result?.h) return result.h; // file handle — chunk terakhir sudah melengkapi file
-      // Kalau API balas offset baru, pakai itu; kalau tidak, hitung manual dari ukuran chunk.
-      offset = typeof result?.offset === 'number' ? result.offset : offset + chunkLength;
-    }
-  } finally {
-    fs.closeSync(fd);
-  }
-  return null;
-}
-
 async function publishVideo(draft, ctx, asset) {
-  const fileLength = fs.statSync(asset.absolutePath).size;
-  const mimeType = guessMimeType(asset.fileName);
-  const appId = config.getSecret('FB_APP_ID');
+  // Upload langsung (multipart, satu request) ke /{page-id}/videos — SAMA seperti /photos.
+  // Sebelumnya pakai 3-step Resumable Upload API (/uploads -> /upload:<session> -> /videos),
+  // tapi step finalize-nya SELALU gagal (code 6000/subcode 1363019, "problem uploading
+  // your video file") di setiap video nyata yang dicoba, walau step 1+2 sukses dapat file
+  // handle valid. Dikonfirmasi 2026-08-20: file yang sama persis yang gagal lewat resumable
+  // API berhasil PUBLISH langsung (published:false, diagnostic) lewat upload langsung ini —
+  // jadi bukan masalah konten/hak cipta, murni resumable API kita yang bermasalah di step
+  // finalize (root cause presisnya tidak pernah ketemu meski sudah beberapa kali dicoba
+  // diagnosis). Upload langsung terbukti jalan untuk file post media sosial biasa (klip
+  // pendek, puluhan MB) — kalau nanti butuh video jauh lebih besar/koneksi tidak stabil,
+  // baru worth revisit resumable API dari awal.
+  const fileBuffer = fs.readFileSync(asset.absolutePath);
+  const formData = new FormData();
+  formData.append('source', new Blob([fileBuffer], { type: guessMimeType(asset.fileName) }), asset.fileName);
+  // /videos tidak punya mekanisme kartu link seperti /feed — sama seperti /photos, tempel
+  // draft.link (kalau ada) sebagai teks biasa di description.
+  formData.append('description', draft.link ? `${draft.text}\n\n${draft.link}` : draft.text);
+  formData.append('access_token', ctx.accessToken);
 
-  // Resumable Upload API, 3 tahap — lihat 04-API-INTEGRATION.md §2 / Graph API upload guide.
-  // 1. Buat upload session.
-  const sessionParams = new URLSearchParams({
-    file_name: asset.fileName,
-    file_length: String(fileLength),
-    file_type: mimeType,
-    access_token: ctx.accessToken,
-  });
-  const session = await callGraphApi(
-    `https://graph.facebook.com/${ctx.graphApiVersion}/${appId}/uploads?${sessionParams.toString()}`,
-    { method: 'POST' }
-  );
-  const uploadSessionId = session?.id; // bentuk: "upload:<id>"
-  if (!uploadSessionId) throw new PublishError('Gagal membuat upload session video (tidak ada session id)');
-
-  // 2. Upload isi file per-chunk, dapat file handle.
-  const fileHandle = await uploadVideoChunks(ctx, uploadSessionId, asset.absolutePath, fileLength);
-  if (!fileHandle) throw new PublishError('Gagal upload file video (tidak ada file handle setelah semua chunk terkirim)');
-
-  // 3. Publish video ke Page pakai file handle.
-  const publishResult = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${ctx.pageId}/videos`, {
+  const body = await callGraphApi(`https://graph.facebook.com/${ctx.graphApiVersion}/${ctx.pageId}/videos`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      fbuploader_video_file_chunk: fileHandle,
-      // /videos juga tidak punya mekanisme kartu link — sama seperti /photos, tempel
-      // draft.link (kalau ada) sebagai teks biasa di description.
-      description: draft.link ? `${draft.text}\n\n${draft.link}` : draft.text,
-      access_token: ctx.accessToken,
-    }),
+    body: formData,
   });
-  if (!publishResult?.id) throw new PublishError('Response Facebook tidak berisi id video');
+  if (!body?.id) throw new PublishError('Response Facebook tidak berisi id video');
 
   deleteAssetAfterPublish(asset.absolutePath, asset.fileName);
-  return { fbPostId: publishResult.id, mediaMode: 'video', mediaFile: asset.fileName };
+  return { fbPostId: body.id, mediaMode: 'video', mediaFile: asset.fileName };
 }
 
 /**

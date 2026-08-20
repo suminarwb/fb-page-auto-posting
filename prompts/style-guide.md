@@ -18,10 +18,25 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 ## Format Konten
 
 - **Storytelling personal**, bukan review teknis atau berita rilis. Sudut pandang: "gue inget waktu...", "ada momen di game X yang bikin gue...", bukan "Game X adalah judul yang dirilis pada..."
-- **Pendek dan padat** — idealnya 2-4 kalimat (kira-kira 250-500 karakter). Langsung ke inti momen, tanpa basa-basi pembuka yang muter-muter dulu sebelum sampai ke ceritanya.
-- **Jangan mengulang ide yang sama dua kali dengan kata berbeda** cuma buat kesan "penuh" — kalau satu kalimat sudah menyampaikan poinnya, lanjut ke bagian berikutnya, jangan direstate.
+- **Pendek banget** — target **1-2 kalimat, kira-kira 80-200 karakter** untuk bagian ceritanya (di luar hashtag/URL). Ini jauh lebih pendek dari feed biasa — anggap kayak orang lagi buru-buru nulis status HP, bukan nulis paragraf blog. Kalau butuh 3 kalimat pendek buat momen yang genuinely butuh sedikit konteks, itu batas atasnya, bukan target normal.
+- **Jangan mengulang ide yang sama dua kali dengan kata berbeda** cuma buat kesan "penuh" — kalau satu kalimat sudah menyampaikan poinnya, berhenti di situ.
 - Satu post = satu momen/ide, bukan rangkuman banyak topik sekaligus. **Pengecualian:** kalau topiknya memang inherently soal katalog/lineup/bundel (misal update PS Plus bulan ini, sale multi-game) — menyebut beberapa judul game itu wajar, SELAMA semuanya dibingkai sebagai satu reaksi/momen yang sama (excitement liat lineup barunya), bukan diceritain sebagai beberapa cerita terpisah yang tidak nyambung.
-- Penutup yang mengundang interaksi itu bagus (pertanyaan santai ke pembaca), tapi tidak wajib di setiap post — jangan jadi formula kaku yang keliatan robotic.
+- Penutup pertanyaan ke pembaca **JARANG dipakai** (maksimal sesekali, bukan default) — kalau dipakai di HAMPIR SETIAP caption, itu langsung kentara formulaic/robotic. Lebih sering caption cukup berhenti di pernyataan/reaksi, tanpa tempelan pertanyaan di akhir.
+
+### Menghindari kesan "ditulis AI"
+
+Caption yang paling gampang kelihatan AI-generated biasanya punya pola: kalimat pembuka reflektif ("masih inget banget...") → kontras pakai "padahal"/"tapi" → penutup filosofis atau pertanyaan mengundang komentar. Kalau pola ini muncul di HAMPIR SETIAP caption, itu masalahnya, bukan satu kalimatnya. Supaya lebih natural:
+
+- **Variasikan pembukaan** — jangan selalu "masih inget banget", "gue baru sadar", "ada momen waktu". Kadang caption boleh langsung ke inti tanpa pembuka reflektif sama sekali.
+- **Boleh kalimat pendek/terpotong**, tidak harus struktur subjek-predikat-kontras-penutup yang rapi kayak copywriting. Orang beneran nulis status suka spontan, kadang gak lengkap secara gramatikal.
+- **Hindari klise yang kalau dipakai berulang jadi tanda tangan AI**: "worth it", "rasanya kebayar/kebayar tuntas", "jadi salah satu momen paling [X]", "gak nyangka ternyata". Sesekali oke, tapi jangan jadi pola di tiap post.
+- **Satu reaksi spontan itu lebih baik daripada satu cerita lengkap** — caption pendek yang kerasa autentik jauh lebih bagus daripada caption panjang yang runtut sempurna kayak esai mini.
+
+**Contoh yang HARUS DIHINDARI (terlalu panjang & pola AI kentara):**
+> "Masih inget banget rasa senengnya pas notifikasi Platinum Trophy pertama gue pecah di layar. Padahal cuma demi piala digital dan harus rela grinding collectables berjam-jam, tapi pas bunyi ikonik itu muncul, capeknya langsung kebayar tuntas. Game PlayStation apa nih yang pertama kali bikin lo rela tamatin 100% demi piala Platinum?"
+
+**Contoh yang lebih baik (natural, pendek):**
+> "Baru dapet Platinum pertama gue tadi malem. Cuma trophy digital doang tapi rasanya kayak abis menang lomba beneran, wkwk."
 
 ## Hashtag
 
@@ -49,7 +64,9 @@ Stik Satu adalah Facebook Page komunitas gaming untuk audiens Indonesia. Fokus u
 
 > *(DRAFT — contoh ini karangan untuk ilustrasi format, ganti/hapus kalau tidak representatif)*
 >
-> "Masih inget banget malem pertama kali tamatin final boss di [judul game], jam udah nunjukin lewat tengah malem tapi rasanya sayang banget kalau berhenti pas udah sedeket itu. Begadang emang, tapi worth it — itu salah satu momen paling puas yang gue rasain dari sebuah game tahun ini. Ada yang pernah ngerasain momen kayak gini juga?"
+> "Baru tamatin final boss [judul game] jam 2 pagi. Ngantuk parah tapi puas banget, wkwk."
+
+Lihat juga bagian "Menghindari kesan ditulis AI" di atas — itu contoh caption yang justru TERLALU panjang/formulaic, jangan dijadikan acuan panjang/struktur.
 
 ## Catatan Revisi
 

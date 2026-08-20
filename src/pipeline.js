@@ -30,18 +30,22 @@ async function withRetry(stage, fn) {
       return result;
     } catch (err) {
       const durationMs = Date.now() - startedAt;
+      // err.message sering cuma wrapper generik ("Gagal generate gambar", dst) — alasan
+      // aslinya (error dari SDK/API provider) ada di err.cause, harus ikut di-log supaya
+      // kegagalan bisa didiagnosis dari log saja tanpa perlu reproduksi ulang.
+      const causeMessage = err.cause?.message ?? err.cause;
       const canRetry = err.retryable && attempt < RETRY_BACKOFF_MS.length;
       if (canRetry) {
         const backoffMs = RETRY_BACKOFF_MS[attempt];
         logger.warn(
-          { stage, status: 'retry', attempt: attempt + 1, durationMs, backoffMs, err: err.message },
+          { stage, status: 'retry', attempt: attempt + 1, durationMs, backoffMs, err: err.message, cause: causeMessage },
           `${stage} gagal (transient), retry ke-${attempt + 1} setelah ${backoffMs}ms`
         );
         await sleep(backoffMs);
         continue;
       }
       logger.error(
-        { stage, status: 'failed', durationMs, retryable: !!err.retryable, err: err.message },
+        { stage, status: 'failed', durationMs, retryable: !!err.retryable, err: err.message, cause: causeMessage },
         `${stage} gagal`
       );
       throw err;
@@ -93,7 +97,7 @@ async function runPipeline({ forcedTopicId } = {}) {
         mediaAsset.write(generated.fileName, generated.imageBuffer);
       } catch (err) {
         logger.warn(
-          { stage: 'image-generator', status: 'skipped', err: err.message },
+          { stage: 'image-generator', status: 'skipped', err: err.message, cause: err.cause?.message ?? err.cause },
           'Gagal generate gambar fallback, lanjut publish teks-only'
         );
       }

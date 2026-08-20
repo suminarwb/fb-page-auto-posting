@@ -7,3 +7,5 @@ data/*.db-shm
 TODO.md
 docs/*
 *.log
+assets/failed-uploads/*
+!assets/failed-uploads/.gitkeep
